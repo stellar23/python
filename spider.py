@@ -29,10 +29,12 @@ import sqlite3  # 进行SQLite数据库操作
 def main():
     baseurl = "https://movie.douban.com/top250?start="
     # 1.解析网页
-    datalist = getdata()
-    savepath = ".\\豆瓣电影Top250.xls"
+    datalist = getdata(baseurl)
+    # savepath = ".\\豆瓣电影Top250.xls"
+    dbpath = "movie.db"
     # 3.保存数据
-    savedata(datalist, savepath)
+    # savedata(datalist, savepath)
+    savedata2db(datalist, dbpath)
 
     # askURL("https://movie.douban.com/top250?start=")
 
@@ -123,6 +125,7 @@ def askURL(url, reason):
 
 
 # 保存数据
+# 1.Excel
 def savedata(savepath):
     print("save...")
     book = xlwt.Workbook(encoding="utf-8", style_compression=0)  # 样式，压缩效果
@@ -134,11 +137,60 @@ def savedata(savepath):
         print("第%d条" % i)
         data = datalist[i]
         for j in range(0, 8):
-            sheet.write(i+1, j, data[j])  # 数据
+            sheet.write(i + 1, j, data[j])  # 数据
 
     book.save(savepath)  # 保存
+
+
+# 2. 数据库
+def savedata2db(datalist, dbpath):
+    init_db(dbpath)
+    conn = sqlite3.connect(dbpath)
+    cur = conn.cursor()
+
+    for data in datalist:
+        for index in range(len(data)):
+            if index == 4 or index == 5:
+                continue
+            data[index] = '""'+data[index]+'""'
+        sql = '''
+             insert into movie250(
+             info_link,pic_link,cname,ename,score,rated,instroduction,info
+             values (%s)  # 占位
+            )
+         ''' % ",".join(data)  # 列表中每一个元素都用逗号连接
+        print(sql)
+        cur.execute(sql)
+        conn.commit()
+    cur.close()
+    conn.close()
+
+
+def init_db(dbpath):
+    sql = '''
+        creat table movie250
+        (
+        id integer primary key autoincrement,
+        info_link text,
+        pic_link text,
+        cname varchar,
+        ename varchar,
+        score numeric,
+        rated numeric,
+        instroduction text,
+        info text
+        )
+    
+    '''
+    conn = sqlite3.connect(dbpath)
+    cursor = conn.cursor()
+    cursor.execute(sql)
+    conn.commit()
+    conn.close()
+
 
 if __name__ == "__main__":  # 当程序执行时
     # 调用函数
     main()
+    # init_db("movietest.db")  # 测试使用
     print("爬取完毕！")
